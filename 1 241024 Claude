@@ -2,11 +2,13 @@ using Linnworks.Core;
 using System;
 using System.Linq;
 
+[Macro("10PcDiscount")]  // This line is important - must match your MacroName parameter
 public class DiscountMacro
 {
     private readonly ILinnworksAPI _api;
-    private const string DISCOUNT_NOTE = "10PC_DISCOUNT_APPLIED"; // Marker to check if discount was applied
+    private const string DISCOUNT_NOTE = "10PC_DISCOUNT_APPLIED";
 
+    [MacroEntryPoint] // Add this attribute to specify the entry point
     public void Execute(ILinnworksAPI api)
     {
         _api = api;
@@ -15,17 +17,16 @@ public class DiscountMacro
 
     private void ApplyDiscount()
     {
-        // Get open orders with specific payment method
+        // Rest of the code stays the same
         var orders = _api.Orders.GetOpenOrders()
             .Where(o => o.PaymentMethod == "Decco10pc");
 
         foreach (var order in orders)
         {
-            // Check if discount was already applied by looking for our note
             var orderNotes = _api.Orders.GetOrderNotes(order.OrderId);
             if (orderNotes.Any(n => n.Note.Contains(DISCOUNT_NOTE)))
             {
-                continue; // Skip this order as discount was already applied
+                continue;
             }
 
             bool discountApplied = false;
@@ -33,10 +34,8 @@ public class DiscountMacro
             {
                 try
                 {
-                    // Calculate new price with 10% discount
                     decimal newPrice = Math.Round(item.Price * 0.9m, 2);
                     
-                    // Update price
                     _api.Orders.UpdateOrderItemPrice(
                         orderId: order.OrderId,
                         orderItemId: item.OrderItemId,
@@ -52,7 +51,6 @@ public class DiscountMacro
                 }
             }
 
-            // If we successfully applied any discounts, add a note to mark this order
             if (discountApplied)
             {
                 _api.Orders.AddOrderNote(
