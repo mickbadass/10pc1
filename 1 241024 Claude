@@ -1,0 +1,66 @@
+using Linnworks.Core;
+using System;
+using System.Linq;
+
+public class DiscountMacro
+{
+    private readonly ILinnworksAPI _api;
+    private const string DISCOUNT_NOTE = "10PC_DISCOUNT_APPLIED"; // Marker to check if discount was applied
+
+    public void Execute(ILinnworksAPI api)
+    {
+        _api = api;
+        ApplyDiscount();
+    }
+
+    private void ApplyDiscount()
+    {
+        // Get open orders with specific payment method
+        var orders = _api.Orders.GetOpenOrders()
+            .Where(o => o.PaymentMethod == "Decco10pc");
+
+        foreach (var order in orders)
+        {
+            // Check if discount was already applied by looking for our note
+            var orderNotes = _api.Orders.GetOrderNotes(order.OrderId);
+            if (orderNotes.Any(n => n.Note.Contains(DISCOUNT_NOTE)))
+            {
+                continue; // Skip this order as discount was already applied
+            }
+
+            bool discountApplied = false;
+            foreach (var item in order.Items)
+            {
+                try
+                {
+                    // Calculate new price with 10% discount
+                    decimal newPrice = Math.Round(item.Price * 0.9m, 2);
+                    
+                    // Update price
+                    _api.Orders.UpdateOrderItemPrice(
+                        orderId: order.OrderId,
+                        orderItemId: item.OrderItemId,
+                        newPrice: newPrice
+                    );
+                    
+                    discountApplied = true;
+                }
+                catch (Exception ex)
+                {
+                    _api.Logger.WriteError("Discount Application Error", 
+                        $"Failed to apply discount to Order {order.OrderId}, Item {item.OrderItemId}: {ex.Message}");
+                }
+            }
+
+            // If we successfully applied any discounts, add a note to mark this order
+            if (discountApplied)
+            {
+                _api.Orders.AddOrderNote(
+                    orderId: order.OrderId,
+                    note: $"{DISCOUNT_NOTE} - Applied on {DateTime.Now}",
+                    isInternal: true
+                );
+            }
+        }
+    }
+}
