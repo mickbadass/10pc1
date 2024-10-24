@@ -2,63 +2,28 @@ using Linnworks.Core;
 using System;
 using System.Linq;
 
-[Macro("10PcDiscount")]  // This line is important - must match your MacroName parameter
-public class DiscountMacro
+public class Macro_10PcDiscount
 {
-    private readonly ILinnworksAPI _api;
-    private const string DISCOUNT_NOTE = "10PC_DISCOUNT_APPLIED";
-
-    [MacroEntryPoint] // Add this attribute to specify the entry point
+    [Macro("10PcDiscount")]
     public void Execute(ILinnworksAPI api)
     {
-        _api = api;
-        ApplyDiscount();
-    }
-
-    private void ApplyDiscount()
-    {
-        // Rest of the code stays the same
-        var orders = _api.Orders.GetOpenOrders()
-            .Where(o => o.PaymentMethod == "Decco10pc");
-
-        foreach (var order in orders)
+        try
         {
-            var orderNotes = _api.Orders.GetOrderNotes(order.OrderId);
-            if (orderNotes.Any(n => n.Note.Contains(DISCOUNT_NOTE)))
-            {
-                continue;
-            }
+            var orders = api.Orders.GetOpenOrders()
+                .Where(o => o.PaymentMethod == "Decco10pc");
 
-            bool discountApplied = false;
-            foreach (var item in order.Items)
+            foreach (var order in orders)
             {
-                try
+                foreach (var item in order.Items)
                 {
                     decimal newPrice = Math.Round(item.Price * 0.9m, 2);
-                    
-                    _api.Orders.UpdateOrderItemPrice(
-                        orderId: order.OrderId,
-                        orderItemId: item.OrderItemId,
-                        newPrice: newPrice
-                    );
-                    
-                    discountApplied = true;
-                }
-                catch (Exception ex)
-                {
-                    _api.Logger.WriteError("Discount Application Error", 
-                        $"Failed to apply discount to Order {order.OrderId}, Item {item.OrderItemId}: {ex.Message}");
+                    api.Orders.UpdateOrderItemPrice(order.OrderId, item.OrderItemId, newPrice);
                 }
             }
-
-            if (discountApplied)
-            {
-                _api.Orders.AddOrderNote(
-                    orderId: order.OrderId,
-                    note: $"{DISCOUNT_NOTE} - Applied on {DateTime.Now}",
-                    isInternal: true
-                );
-            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Discount application failed: " + ex.Message);
         }
     }
 }
