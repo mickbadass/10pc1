@@ -1,29 +1,32 @@
-using Linnworks.Core;
-using System;
-using System.Linq;
-
-public class Macro_10PcDiscount
+namespace LinnworksMacro
 {
-    [Macro("10PcDiscount")]
-    public void Execute(ILinnworksAPI api)
-    {
-        try
-        {
-            var orders = api.Orders.GetOpenOrders()
-                .Where(o => o.PaymentMethod == "Decco10pc");
+    using Linnworks.Core;
+    using System;
+    using System.Linq;
 
-            foreach (var order in orders)
+    public class TenPercentDiscount
+    {
+        [Macro("TenPercentDiscount")]
+        public void Execute(ILinnworksAPI api)
+        {
+            try
             {
-                foreach (var item in order.Items)
+                var orders = api.Orders.GetOpenOrders()
+                    .Where(o => o.PaymentMethod == "Decco10pc");
+
+                foreach (var order in orders)
                 {
-                    decimal newPrice = Math.Round(item.Price * 0.9m, 2);
-                    api.Orders.UpdateOrderItemPrice(order.OrderId, item.OrderItemId, newPrice);
+                    foreach (var item in order.Items)
+                    {
+                        decimal newPrice = Math.Round(item.Price * 0.9m, 2);
+                        api.Orders.UpdateOrderItemPrice(order.OrderId, item.OrderItemId, newPrice);
+                    }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            throw new Exception("Discount application failed: " + ex.Message);
+            catch (Exception ex)
+            {
+                throw new Exception("Discount application failed: " + ex.Message);
+            }
         }
     }
 }
